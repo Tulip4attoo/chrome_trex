@@ -5,13 +5,15 @@ import numpy as np
 import cv2
 import os
 
+import chrome_trex_api
+import trex_nn
+
 from mss import mss, tools
 from PIL import ImageOps, Image
 
 
 
-
-def find_game_position(screenshotter, threshold):
+def find_game_position(sct, threshold):
     dino_template = cv2.imread(os.path.join('templates', 'dino.png'), 0)
     w, h = dino_template.shape[::-1]
     landscape_template = cv2.imread(os.path.join('templates', 'dino_landscape.png'), 0)
@@ -19,7 +21,7 @@ def find_game_position(screenshotter, threshold):
 
     landscape = {}
     # mac dinh la se hien thi o screenshot 1, du chung ta co 1 hay nhieu man hinh
-    monitor = screenshotter.monitors[1]
+    monitor = sct.monitors[1]
     image = np.array(sct.grab(monitor))[:,:,:3]
     gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     res = cv2.matchTemplate(gray_image, dino_template, cv2.TM_CCOEFF_NORMED)
@@ -29,8 +31,8 @@ def find_game_position(screenshotter, threshold):
         landscape = dict(monitor, height=lh, left=pt[0], top=pt[1] - lh + h, width=lw)
     return landscape
 
-def get_game_landscape_and_set_focus_or_die(screenshotter, threshold=0.7):
-    landscape = find_game_position(screenshotter, threshold)
+def get_game_landscape_and_set_focus_or_die(sct, threshold=0.7):
+    landscape = find_game_position(sct, threshold)
     if not landscape:
         print("Can't find the game!")
         exit(1)
@@ -83,44 +85,62 @@ def compute_speed(distance_array, last_distance, last_speed, loop_time, max_spee
     boi vi co vai lag nen doi khi speed se bi noi ra rat rong, nen ta can co
     1 max_speed_step de gioi han
     """
-    speed = (distance_array[0] - distance) / loop_time
-    return min(speed, last_speed + max_speed_step)
+    speed = (distance_array[0] - last_distance) / loop_time
+    return max(min(speed, last_speed + max_speed_step), last_speed - max_speed_step)
+
+BLANK_BOX = 247000
+GAMEOVER_RANGE = [630000, 650000]
+TIME_BETWEEN_FRAMES = 0.01
+TIME_BETWEEN_GAMES = 0.5
+
+MAX_SPEED_STEP = 15
+INIT_SPEED = 270
+N_X = 3
+N_H = 3
+N_Y = 1
 
 
-with mss() as screenshotter:
-    MAX_SPEED_STEP = 15
-    INIT_SPEED = 270
-    get_game_landscape_and_set_focus_or_die(screenshotter)
-    reset_game()
-    landscape = get_game_landscape_and_set_focus_or_die(screenshotter, .95)
 
-    start_game()
-    gameover_template = cv2.imread(os.path.join('templates', 'dino_gameover.png'), 0)
-    last_distance = landscape['width']
-    x1, x2, y1, y2 = compute_region_of_interest(landscape)
-    speed = INIT_SPEED
-    start_time = None
+def play_game(parameters_set):
+    with mss() as sct:
+        chrome_trex_api.restart_game()
+        time.sleep(0.5)
+        landscape = get_game_landscape_and_set_focus_or_die(sct, .8)
 
-    while True:
-        image = np.array(sct.grab(landscape))[:,:,:3]
-        gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        gray_image += np.abs(247 - gray_image[0, x2])
-        roi = gray_image[y1:y2, x1:x2] # roi la tam anh region_of_interest thoi
-        distance, size = compute_distance_and_size(roi, x2)
-        print(speed, distance, size)
-        if distance == x2:
-            continue
-        elif distance < 50: # se thay bang so khac, tuy nhien ko qua can thiet hehe
-            if len(distance_array):
-                end_time = time.time()
-                if start_time:
-                    loop_time = end_time - start_time
-                    speed = compute_speed(distance_array, distance, 
-                        speed, loop_time, max_speed_step = MAX_SPEED_STEP)
-                start_time = time.time()
-            distance_array = []
-        else:
-            distance_array.append(distance)
-        last_distance = distance
-        time.sleep(0.1)
+        gameover_template = cv2.imread(os.path.join('templates', 'dino_gameover.png'), 0)
+        last_distance = landscape['width']
+        x1, x2, y1, y2 = compute_region_of_interest(landscape)
+        speed = INIT_SPEED
+        start_time = None
+        distance_array = []
+        count_cactus = 0
 
+        while True:
+            image = np.array(sct.grab(landscape))[:,:,:3]
+            gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            gray_image += np.abs(247 - gray_image[0, x2])
+            roi = gray_image[y1:y2, x1:x2] # roi la tam anh region_of_interest thoi
+            distance, size = compute_distance_and_size(roi, x2)
+            input_set = [distance, speed, size]
+            trex_nn.wrap_model(input_set, parameters_set, N_X)
+            if distance == x2:
+                continue
+            elif distance < 40 or distance > last_distance: # co the thay bang so khac, tuy nhien ko qua can thiet hehe
+                if len(distance_array):
+                    end_time = time.time()
+                    if start_time:
+                        loop_time = end_time - start_time
+                        speed = compute_speed(distance_array, distance, 
+                            speed, loop_time, max_speed_step = MAX_SPEED_STEP)
+                    start_time = time.time()
+                    count_cactus += 1
+                    print(count_cactus)
+                distance_array = []
+            else:
+                distance_array.append(distance)
+            gameover_state = chrome_trex_api.check_gameover()
+            if gameover_state:
+                print("Game over. Restart game")
+                return count_cactus
+            last_distance = distance
+            time.sleep(TIME_BETWEEN_FRAMES)

@@ -71,3 +71,6 @@ Out[207]: 11.571918165872619
 check_speed_change(speed_array)
 
 Out[205]: 8.9635400696821907
+
+
+https://github.com/Kulbear/deep-learning-coursera/tree/master/Neural%20Networks%20and%20Deep%20Learning
