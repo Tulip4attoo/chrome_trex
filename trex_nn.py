@@ -51,8 +51,8 @@ def initialize_parameters(n_x, n_h, n_y):
     return parameters
 
 
-def re_shape_X(X, n_x):
-    return np.reshape(X, (n_x, 1))
+def re_shape_X(X):
+    return np.reshape(X, (len(X), 1))
 
 ######  PART 2: CREATE A NEURAL NETWORK MODEL   ######
 ######################################################
@@ -84,14 +84,14 @@ def from_model_to_action(value, threshold = 0.6):
 
 
 def wrap_model(X, parameters, n_x):
-    X_adj = re_shape_X(X, n_x)
+    X_adj = re_shape_X(X)
     action_value = tRex_model(X_adj, parameters).item()
     # print(action_value)
     from_model_to_action(action_value, threshold = 0.6)
 
 
 def test_help(X, parameters, n_x):
-    X_adj = re_shape_X(X, n_x)
+    X_adj = re_shape_X(X)
     W1 = parameters['W1']
     b1 = parameters['b1']
     W2 = parameters['W2']

@@ -1,17 +1,34 @@
-import pyscreenshot as ImageGrab
 import pyautogui
 import time
 import numpy as np
 import cv2
 import os
+import webbrowser
+import _thread
 
-import chrome_trex_api
 import trex_nn
 
-from mss import mss, tools
-from PIL import ImageOps, Image
+from mss import mss
 
 
+###### PART 1: PREPARE FIXED VARs AND FUNCTIONs ######
+######################################################
+######################################################
+
+
+GAMEOVER_BOX = {'Y_GAMEOVER': 30, 'X_GAMEOVER': 115, 
+                'W_GAMEOVER': 200, 'H_GAMEOVER': 15}
+GAMEOVER_RANGE = [630000, 670000]
+TIME_BETWEEN_FRAMES = 0.01
+TIME_BETWEEN_GAMES = 0.5
+
+MAX_SPEED_STEP = 15
+INIT_SPEED = 270
+N_X = 3
+N_H = 3
+N_Y = 1
+
+LANDSCAPE = False
 
 def find_game_position(sct, threshold):
     dino_template = cv2.imread(os.path.join('templates', 'dino.png'), 0)
@@ -51,7 +68,13 @@ def compute_region_of_interest(landscape):
 
 def reset_game():
     pyautogui.hotkey('ctrl', 'r')
-    time.sleep(1)
+    time.sleep(2)
+
+def reset_game_2(landscape):
+    y = 65 + landscape['top']
+    x = 235 + landscape["left"]
+    pyautogui.click(y, x)
+    time.sleep(2)
 
 def start_game():
     pyautogui.press('space')
@@ -59,9 +82,8 @@ def start_game():
 
 def compute_distance_and_size(roi, max_distance):
     """
-    minh chi check vung region_of_interest thoi
-    vung nay chi co xuong rong --> co mau la thi` minh se biet do la co 
-    xuong rong. Lay vung do thoi.
+    minh chi check vung region_of_interest thoi vung nay chi co xuong rong 
+    --> co mau la thi` minh se biet do la co xuong rong. Lay vung do thoi.
     Doan nay hard code de co size.
     Khong hay lam, nhung cung chap nhan duoc
     """
@@ -88,26 +110,36 @@ def compute_speed(distance_array, last_distance, last_speed, loop_time, max_spee
     speed = (distance_array[0] - last_distance) / loop_time
     return max(min(speed, last_speed + max_speed_step), last_speed - max_speed_step)
 
-BLANK_BOX = 247000
-GAMEOVER_RANGE = [630000, 650000]
-TIME_BETWEEN_FRAMES = 0.01
-TIME_BETWEEN_GAMES = 0.5
 
-MAX_SPEED_STEP = 15
-INIT_SPEED = 270
-N_X = 3
-N_H = 3
-N_Y = 1
+def check_gameover(img_landscape, gameover_range = GAMEOVER_RANGE, gameover_box = GAMEOVER_BOX):
+    result = False
+    y1 = GAMEOVER_BOX["Y_GAMEOVER"]
+    y2 = GAMEOVER_BOX["Y_GAMEOVER"] + GAMEOVER_BOX["H_GAMEOVER"]
+    x1 = GAMEOVER_BOX["X_GAMEOVER"]
+    x2 = GAMEOVER_BOX["X_GAMEOVER"] + GAMEOVER_BOX["W_GAMEOVER"]
+    gray_image = cv2.cvtColor(img_landscape, cv2.COLOR_BGR2GRAY)
+    gray = gray_image[y1:y2, x1:x2]
+    curr_state = gray.sum()
+    if curr_state < GAMEOVER_RANGE[1] and curr_state > GAMEOVER_RANGE[0]:
+        result = True
+    return result
 
 
+######  PART 2: PLAYGAME                        ######
+######################################################
+######################################################
 
 def play_game(parameters_set):
+    global LANDSCAPE
     with mss() as sct:
-        chrome_trex_api.restart_game()
-        time.sleep(0.5)
+        if LANDSCAPE:
+            reset_game_2(LANDSCAPE)
+        else:
+            reset_game()
         landscape = get_game_landscape_and_set_focus_or_die(sct, .8)
+        LANDSCAPE = landscape.copy()
+        start_game()
 
-        gameover_template = cv2.imread(os.path.join('templates', 'dino_gameover.png'), 0)
         last_distance = landscape['width']
         x1, x2, y1, y2 = compute_region_of_interest(landscape)
         speed = INIT_SPEED
@@ -138,9 +170,21 @@ def play_game(parameters_set):
                 distance_array = []
             else:
                 distance_array.append(distance)
-            gameover_state = chrome_trex_api.check_gameover()
+            gameover_state = check_gameover(image)
             if gameover_state:
                 print("Game over. Restart game")
                 return count_cactus
             last_distance = distance
             time.sleep(TIME_BETWEEN_FRAMES)
+
+
+def open_url_on_chrome(url):
+    chrome_path = '/usr/bin/google-chrome %s'
+    webbrowser.get(chrome_path).open(url)
+    print("opening...")
+
+
+def chrome_setup(url):
+    _thread.start_new_thread(open_url_on_chrome, (url,))
+    time.sleep(2)
+    pyautogui.hotkey('ctrl', 'winleft', 'left')

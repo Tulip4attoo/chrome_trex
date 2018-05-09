@@ -9,6 +9,8 @@ import logging
 ######################################################
 ######################################################
 
+URL = "http://www.trex-game.skipser.com/"
+
 N_X = 3
 N_H = 3
 N_Y = 1
@@ -32,7 +34,7 @@ def cv_to_sequence(body):
     sequence_str = sequence_str.replace("]", "").replace("\n", "")
     sequence_str = sequence_str.replace("(", "").replace(")", "")
     sequence_str = sequence_str.replace(" ", "")
-    sequence_adj = map(float, sequence_str.split(","))
+    sequence_adj = list(map(float, sequence_str.split(",")))
     return sequence_adj
 
 
@@ -50,7 +52,7 @@ def cv_to_body(adn):
 
 
 def genesis(pop_size = POP_SIZE):
-    trex_clan = [trex_nn.initialize_parameters(N_X, N_H, N_Y) for i in xrange(POP_SIZE)]
+    trex_clan = [trex_nn.initialize_parameters(N_X, N_H, N_Y) for i in range(POP_SIZE)]
     trex_clan = np.array(trex_clan)
     return trex_clan
 
@@ -68,7 +70,7 @@ def random_match(random_set = RANDOM_SET):
 def do_mutation(child, mutation_prob = MUTATION_PROB):
     mutation_rate = np.random.random(16)
     new_child = child[:]
-    for ind in xrange(16):
+    for ind in range(16):
         if mutation_rate[ind] < mutation_prob:
             if ind < 9:
                 new_child[ind] += np.random.randn() * MUTATION_RANGE[0]
@@ -119,29 +121,15 @@ def gen_to_max_size(survivals, pop_size = POP_SIZE):
 
     """
     curr_len = N_SIZE
-    dna_survivals = map(cv_to_sequence, survivals)
+    dna_survivals = list(map(cv_to_sequence, survivals))
     dna_tribal = dna_survivals[:]
     while curr_len < pop_size:
         new_born = breed_a_child(dna_survivals)
         dna_tribal.append(new_born)
         curr_len += 1
-    new_gen = map(cv_to_body, dna_tribal)
+    new_gen = list(map(cv_to_body, dna_tribal))
     new_gen = np.array(new_gen)
     return new_gen
-
-
-def fitness_a_tribal_test(tribal):
-    """
-    get the fitness of a tribal
-    """
-    scores = np.random.random_sample(12)
-    return scores
-
-
-def select_survivals_test(tribal):
-    fitness_scores = fitness_a_tribal_test(tribal)
-    survival_inds = (-fitness_scores).argsort()[:4]
-    return tribal[survival_inds]
 
 
 def select_survivals(tribal, score):
@@ -154,16 +142,6 @@ def select_survivals(tribal, score):
 ######  PART 2: EVOLVE                          ######
 ######################################################
 ######################################################
-
-def evolve_test():
-    count = 0
-    adam_eva = genesis(POP_SIZE)
-    curr_gen = adam_eva.copy()
-    while count < 10:
-        survivals = select_survivals_test(curr_gen)
-        curr_gen = gen_to_max_size(survivals, POP_SIZE)
-        count += 1
-
 
 def evolve():
     adam_eva = genesis(POP_SIZE)
@@ -222,4 +200,6 @@ logging.basicConfig(filename=log_file_name_2, level=logging.INFO,
 log1.info("Start")
 log2.info("Start")
 
+capturing_objects.chrome_setup(URL)
+time.sleep(3)
 evolve()
