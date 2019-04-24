@@ -7,8 +7,16 @@ You know this game? I'm too.
   <i>Infamous Chrome game</i>
 </p>
 
-
 I created an end-to-end bot to play Chrome Dinosaur game. My model used screenshots as input. 
+
+# Training
+
+To start training, just type:
+```
+python trex_nn.py
+```
+
+# Articles
 
 I wrote a blog series about this project:
 [Part 1](https://tulip4attoo.github.io/blog/tao-bot-choi-dinosaur-chrome-1/)
