@@ -19,10 +19,10 @@ python trex_nn.py
 # Articles
 
 I wrote a blog series about this project:
-[Part 1](https://tulip4attoo.github.io/blog/tao-bot-choi-dinosaur-chrome-1/)
-[Part 2](https://tulip4attoo.github.io/blog/tao-bot-choi-dinosaur-chrome-2/)
-[Part 3](https://tulip4attoo.github.io/blog/tao-bot-choi-dinosaur-chrome-3/)
-[Part 4](https://tulip4attoo.github.io/blog/tao-bot-choi-dinosaur-chrome-4/)
+[Part 1](https://tulip4attoo.github.io/tao-bot-choi-dinosaur-chrome-1/) |
+[Part 2](https://tulip4attoo.github.io/tao-bot-choi-dinosaur-chrome-2/) |
+[Part 3](https://tulip4attoo.github.io/tao-bot-choi-dinosaur-chrome-3/) |
+[Part 4](https://tulip4attoo.github.io/tao-bot-choi-dinosaur-chrome-4/)
 
 References:
 
